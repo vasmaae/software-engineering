@@ -8,6 +8,8 @@ Go API читает каталог из PostgreSQL, React показывает �
 
 Задачи и график: [YouTrack SGT](https://vasmaae.youtrack.cloud/issues/SGT).
 Предыдущие отчёты находятся в `reports/`.
+Результат ЛР5: [отчёт](reports/Отчёт_по_лабораторной_работе_№_5.docx)
+и [снимок метрик SGT-15](docs/measurements/SGT-15/README.md).
 
 ## Запуск
 

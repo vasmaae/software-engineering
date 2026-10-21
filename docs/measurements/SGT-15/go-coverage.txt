@@ -1,0 +1,2 @@
+github.com/vasmaae/software-engineering/internal/catalog/handler.go:22:	NewHandler	85.7%
+total:									(statements)	85.7%
