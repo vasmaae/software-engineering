@@ -1,0 +1,49 @@
+$ sh scripts/check-branch.sh feature/SGT-3-route-catalog
+
+Exit code: 0
+
+$ sh scripts/check-branch.sh feature/routes
+Invalid branch: feature/routes
+Expected main or (feature|bugfix|docs|chore)/SGT-<id>-<lowercase-kebab-description>
+
+Exit code: 1
+
+$ git push --dry-run origin HEAD:branch-policy-rejection
+Invalid branch: branch-policy-rejection
+Expected main or (feature|bugfix|docs|chore)/SGT-<id>-<lowercase-kebab-description>
+error: failed to push some refs to 'https://github.com/vasmaae/software-engineering'
+
+Exit code: 1
+
+$ node --test scripts/branch.test.mjs scripts/metrics.test.mjs
+✔ accepts main and task branches with the supported prefixes (65.589542ms)
+✔ rejects missing task ids, unsupported prefixes and malformed descriptions (147.431042ms)
+✔ pre-push checks every remote destination, allowing tags and deletions (105.573125ms)
+✔ counts leaf tests once and combines frontend and Go reports (0.606625ms)
+✔ rejects missing coverage rather than reporting a fake zero (0.195042ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 351.202333
+
+Exit code: 0
+
+PR title: ci(workflow): enforce branch and PR standards (SGT-15)
+
+Exit code: 0
+
+PR title: update everything
+⧗   --- input ---
+update everything
+✖   subject may not be empty [subject-empty]
+✖   type may not be empty [type-empty]
+
+✖   found 2 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+
+Exit code: 1
