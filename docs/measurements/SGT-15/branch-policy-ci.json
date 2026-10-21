@@ -1,7 +1,7 @@
 {
   "purpose": "Intentional rejection of an invalid branch name; application build must not run",
-  "run_url": "https://github.com/vasmaae/software-engineering/actions/runs/39689721716",
-  "commit": "ecbdf36dbb639fb90b5eaf444ff28ced9c2b705d",
+  "run_url": "https://github.com/vasmaae/software-engineering/actions/runs/39689941691",
+  "commit": "97b8b296bc2ae6057fce3a04cc93e6b2af59684e",
   "branch": "branch-policy-rejection",
   "conclusion": "failure",
   "steps": [
@@ -63,7 +63,7 @@
     },
     {
       "name": "Upload test reports and metrics",
-      "conclusion": "failure"
+      "conclusion": "skipped"
     },
     {
       "name": "Upload build",
