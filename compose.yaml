@@ -1,0 +1,39 @@
+name: sgt-lab5
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: sgt
+      POSTGRES_USER: sgt
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - database:/var/lib/postgresql
+      - ./db/001_catalog.sql:/docker-entrypoint-initdb.d/001_catalog.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U sgt -d sgt]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  api:
+    build:
+      context: .
+      dockerfile: deploy/api.Dockerfile
+    environment:
+      PGHOST: db
+      PGDATABASE: sgt
+      PGUSER: sgt
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: postgres://db/sgt?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    ports:
+      - 127.0.0.1:8080:80
+    depends_on:
+      - api
+volumes:
+  database:
