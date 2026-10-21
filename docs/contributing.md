@@ -49,8 +49,8 @@ push и удаление запрещены, правило распростра
 ```sh
 git switch main
 git pull --ff-only
-git tag -a v0.1.0 -m 'SGT lab 5 infrastructure preview'
-git push origin v0.1.0
+git tag -a v0.1.1 -m 'SGT lab 5 infrastructure preview'
+git push origin v0.1.1
 ```
 
 Workflow повторно запускает линтеры, тесты, метрики и сборку на теге. Затем
