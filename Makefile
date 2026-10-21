@@ -15,7 +15,7 @@ lint:
 test:
 	@test -n "$$TEST_DATABASE_URL" || (echo 'Set TEST_DATABASE_URL to a dedicated initialized test database'; exit 1)
 	mkdir -p artifacts
-	go test -race -coverpkg=./internal/... -coverprofile=artifacts/go-coverage.out -json ./... > artifacts/go-tests.jsonl
+	go test -count=1 -race -coverpkg=./internal/... -coverprofile=artifacts/go-coverage.out -json ./... > artifacts/go-tests.jsonl
 	go tool cover -func=artifacts/go-coverage.out > artifacts/go-coverage.txt
 	npm test
 	npm run test:scripts
