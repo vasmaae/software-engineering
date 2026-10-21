@@ -79,7 +79,7 @@ jobs:
           make build
           tar -czf dist/sgt-linux-amd64.tar.gz -C dist api web -C .. db docs README.md
       - name: Upload test reports and metrics
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: quality-${{ inputs.stage || 'current' }}-${{ github.run_number }}

@@ -31,3 +31,19 @@ $ node --test scripts/branch.test.mjs scripts/metrics.test.mjs
 ℹ duration_ms 351.202333
 
 Exit code: 0
+
+PR title: ci(workflow): enforce branch and PR standards (SGT-15)
+
+Exit code: 0
+
+PR title: update everything
+⧗   --- input ---
+update everything
+✖   subject may not be empty [subject-empty]
+✖   type may not be empty [type-empty]
+
+✖   found 2 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+
+Exit code: 1

@@ -1,0 +1,85 @@
+{
+  "purpose": "Intentional rejection of an invalid branch name; application build must not run",
+  "run_url": "https://github.com/vasmaae/software-engineering/actions/runs/39689721716",
+  "commit": "ecbdf36dbb639fb90b5eaf444ff28ced9c2b705d",
+  "branch": "branch-policy-rejection",
+  "conclusion": "failure",
+  "steps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@v7",
+      "conclusion": "success"
+    },
+    {
+      "name": "Branch naming",
+      "conclusion": "failure"
+    },
+    {
+      "name": "Run actions/setup-go@v7",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Run actions/setup-node@v7",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Install dependencies",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Conventional Commits",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Pull request title",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Initialize test database",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Static analysis and formatting",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Unit and PostgreSQL integration tests",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Collect quality metrics",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Build application",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Upload test reports and metrics",
+      "conclusion": "failure"
+    },
+    {
+      "name": "Upload build",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Post Run actions/checkout@v7",
+      "conclusion": "success"
+    },
+    {
+      "name": "Stop containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ]
+}
