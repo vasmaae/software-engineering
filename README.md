@@ -46,7 +46,7 @@ make setup
 миграцию к **новой пустой** БД:
 
 ```sh
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/001_catalog.sql
+for migration in db/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration" || break; done
 go run ./cmd/api
 ```
 

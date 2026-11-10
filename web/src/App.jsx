@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const transportNames = {
+export const transportNames = {
   bus: "Автобус",
   tram: "Трамвай",
   trolleybus: "Троллейбус",
@@ -34,13 +34,9 @@ export default function App() {
   );
 
   return (
-    <main>
-      <p className="eyebrow">Учебный проект SGT</p>
+    <>
       <h1>Городской транспорт</h1>
       <p>Найдите маршрут и посмотрите его конечные остановки.</p>
-      <p className="notice">
-        Демонстрационные данные. Не используйте их для планирования поездок.
-      </p>
       <div className="filters">
         <label>
           Номер маршрута
@@ -81,7 +77,11 @@ export default function App() {
                 <li key={route.id}>
                   <span className="number">{route.number}</span>
                   <div>
-                    <h2>{transportNames[route.transport]}</h2>
+                    <h2>
+                      <a href={`#/routes/${route.id}`}>
+                        {transportNames[route.transport]} №{route.number}
+                      </a>
+                    </h2>
                     <p>
                       {route.start} → {route.end}
                     </p>
@@ -92,6 +92,6 @@ export default function App() {
           )}
         </section>
       )}
-    </main>
+    </>
   );
 }
