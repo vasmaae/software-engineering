@@ -121,3 +121,63 @@ main {
     padding: 20px 16px;
   }
 }
+
+textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #687e88;
+  border-radius: 6px;
+  font: inherit;
+  resize: vertical;
+}
+
+button {
+  border: 1px solid #165f56;
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: #165f56;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: white;
+  color: #165f56;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+form,
+fieldset,
+.section {
+  margin: 16px 0;
+}
+
+fieldset {
+  min-width: 0;
+  border: 1px solid #c4d1d6;
+  padding: 14px;
+}
+
+fieldset > label {
+  margin-bottom: 12px;
+}
+
+.actions,
+.departures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.departures li {
+  border: 1px solid #a5bfb8;
+  border-radius: 6px;
+  padding: 4px 12px;
+  background: white;
+}

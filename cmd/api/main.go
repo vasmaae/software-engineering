@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vasmaae/software-engineering/internal/catalog"
+	"github.com/vasmaae/software-engineering/internal/password"
 )
 
 func main() {
@@ -23,14 +24,36 @@ func main() {
 		log.Fatal("invalid database configuration")
 	}
 	defer db.Close()
-	if err := db.Ping(ctx); err != nil {
-		log.Fatal("database is unavailable")
+	// Compose can restart the API while PostgreSQL is still opening its socket.
+	for db.Ping(ctx) != nil {
+		select {
+		case <-ctx.Done():
+			log.Fatal("database is unavailable")
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+	admin := catalog.AdminConfig{Secure: os.Getenv("SECURE_COOKIE") == "true"}
+	if value := os.Getenv("ADMIN_PASSWORD_HASH"); value != "" {
+		hash, err := password.Parse(value)
+		if err != nil {
+			log.Fatal("ADMIN_PASSWORD_HASH has an invalid format")
+		}
+		admin.Password = &hash
+	}
+	addr := os.Getenv("HTTP_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1:8080"
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/api/", catalog.NewHandler(db, admin))
+	if web := os.Getenv("WEB_ROOT"); web != "" {
+		mux.Handle("/", http.FileServer(http.Dir(web)))
 	}
 	server := &http.Server{
-		Addr: ":8080", Handler: catalog.NewHandler(db),
-		ReadHeaderTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second,
-		IdleTimeout: 60 * time.Second,
+		Addr: addr, Handler: mux,
+		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second,
+		WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second,
 	}
-	log.Print("API listening on :8080")
+	log.Printf("API listening on %s", addr)
 	log.Fatal(server.ListenAndServe())
 }

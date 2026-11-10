@@ -1,6 +1,6 @@
 {
   "name": "sgt-transport-catalog",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,7 +15,8 @@
     "test": "vitest run --coverage --reporter=default --reporter=json --outputFile=../artifacts/web-tests.json",
     "test:scripts": "node --test scripts/*.test.mjs",
     "metrics": "node scripts/metrics.mjs",
-    "commitlint": "commitlint"
+    "commitlint": "commitlint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "react": "19.3.1",
@@ -25,6 +26,7 @@
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.0",
     "@testing-library/react": "16.3.3",
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "5.0.5",
