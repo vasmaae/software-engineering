@@ -24,8 +24,13 @@ func main() {
 		log.Fatal("invalid database configuration")
 	}
 	defer db.Close()
-	if err := db.Ping(ctx); err != nil {
-		log.Fatal("database is unavailable")
+	// Compose can restart the API while PostgreSQL is still opening its socket.
+	for db.Ping(ctx) != nil {
+		select {
+		case <-ctx.Done():
+			log.Fatal("database is unavailable")
+		case <-time.After(200 * time.Millisecond):
+		}
 	}
 	admin := catalog.AdminConfig{Secure: os.Getenv("SECURE_COOKIE") == "true"}
 	if value := os.Getenv("ADMIN_PASSWORD_HASH"); value != "" {
