@@ -13,7 +13,7 @@ import (
 )
 
 func TestInvalidRequests(t *testing.T) {
-	handler := NewHandler(nil)
+	handler := NewHandler(nil, AdminConfig{})
 	for _, test := range []struct {
 		name, method, path string
 		status             int
@@ -46,7 +46,7 @@ func TestPostgresIntegration(t *testing.T) {
 		t.Fatal("invalid test database configuration")
 	}
 	t.Cleanup(db.Close)
-	handler := NewHandler(db)
+	handler := NewHandler(db, AdminConfig{})
 	for _, test := range []struct {
 		name, query string
 		count       int

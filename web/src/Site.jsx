@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import Admin from "./Admin.jsx";
 import App from "./App.jsx";
 import { RoutePage, StopCatalog, StopPage } from "./Public.jsx";
 
@@ -20,12 +21,15 @@ export default function Site() {
       <nav aria-label="Разделы справочника">
         <a href="#/">Маршруты</a>
         <a href="#/stops">Остановки</a>
+        <a href="#/admin">Администрирование</a>
       </nav>
       <p className="notice">
         Учебные данные. Не используйте их для планирования поездок.
       </p>
       {path === "" || path === "/" ? (
         <App />
+      ) : path === "/admin" ? (
+        <Admin />
       ) : path === "/stops" ? (
         <StopCatalog />
       ) : match?.[1] === "routes" ? (

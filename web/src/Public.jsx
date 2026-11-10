@@ -26,6 +26,49 @@ export function Data({ path, children }) {
   return children(result.data);
 }
 
+export const dayNames = { weekday: "Будни", weekend: "Выходные" };
+
+export function directionLabel(item) {
+  return `${item.stops[0].name} → ${item.stops.at(-1).name}`;
+}
+
+function Schedule({ id, direction, stop }) {
+  const [day, setDay] = useState("weekday");
+  return (
+    <section aria-label="Расписание">
+      <h2>Расписание</h2>
+      <p>Плановое отправление: {stop}</p>
+      <label>
+        Тип дня
+        <select value={day} onChange={(event) => setDay(event.target.value)}>
+          {Object.entries(dayNames).map(([value, title]) => (
+            <option key={value} value={value}>
+              {title}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Data
+        path={`/api/routes/${id}/schedule?direction=${direction}&day=${day}`}
+      >
+        {(times) =>
+          times.length === 0 ? (
+            <p>Для выбранного направления и типа дня расписания нет.</p>
+          ) : (
+            <ul className="departures" aria-label="Время отправления">
+              {times.map((time) => (
+                <li key={time}>
+                  <time>{time}</time>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </Data>
+    </section>
+  );
+}
+
 export function RoutePage({ id, initialDirection }) {
   const [direction, setDirection] = useState(initialDirection);
   return (
@@ -47,7 +90,7 @@ export function RoutePage({ id, initialDirection }) {
               >
                 {route.directions.map((item) => (
                   <option key={item.direction} value={item.direction}>
-                    {item.stops[0].name} → {item.stops.at(-1).name}
+                    {directionLabel(item)}
                   </option>
                 ))}
               </select>
@@ -61,6 +104,9 @@ export function RoutePage({ id, initialDirection }) {
                 </li>
               ))}
             </ol>
+            {stops.length > 0 && (
+              <Schedule id={id} direction={direction} stop={stops[0].name} />
+            )}
           </>
         );
       }}

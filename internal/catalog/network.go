@@ -79,7 +79,7 @@ func addNetwork(mux *http.ServeMux, db *pgxpool.Pool) {
 						ORDER BY rs.position) FROM route_stops rs JOIN stops s ON s.id = rs.stop_id
 						WHERE (rs.route_id, rs.direction) = (d.route_id, d.direction)))
 					ORDER BY d.direction) FROM directions d WHERE d.route_id = r.id), '[]'::jsonb)
-			FROM routes r WHERE r.id = $1`, id).Scan(&route.ID, &route.Number, &route.Transport,
+			FROM route_catalog r WHERE r.id = $1`, id).Scan(&route.ID, &route.Number, &route.Transport,
 			&route.Start, &route.End, &route.Directions)
 		if err != nil {
 			readError(w, err)

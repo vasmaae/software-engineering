@@ -72,12 +72,36 @@ jobs:
       - name: Collect quality metrics
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         env:
-          METRICS_STAGE: ${{ inputs.stage || '' }}
+          METRICS_STAGE: ${{ inputs.stage || (github.ref_type == 'tag' && 'SGT-20') || '' }}
         run: make metrics
       - name: Build application
+        run: make build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance tests
+        id: e2e
         run: |
-          make build
-          tar -czf dist/sgt-linux-amd64.tar.gz -C dist api web -C .. db docs README.md
+          export E2E_ADMIN_PASSWORD="$(openssl rand -hex 20)"
+          echo "::add-mask::$E2E_ADMIN_PASSWORD"
+          export ADMIN_PASSWORD_HASH="$(printf '%s\n' "$E2E_ADMIN_PASSWORD" | go run ./cmd/adminhash)"
+          echo "::add-mask::$ADMIN_PASSWORD_HASH"
+          npm run test:e2e
+      - name: Browser test summary
+        if: ${{ !cancelled() && (steps.e2e.outcome == 'success' || steps.e2e.outcome == 'failure') }}
+        run: |
+          node --input-type=module -e '
+          import { readFileSync } from "node:fs";
+          const {stats} = JSON.parse(readFileSync("artifacts/playwright.json"));
+          console.log("## Браузерные сценарии Playwright");
+          console.log(`\nПройдено: ${stats.expected}; упало: ${stats.unexpected}; нестабильно: ${stats.flaky}; пропущено: ${stats.skipped}.`);
+          ' >> "$GITHUB_STEP_SUMMARY"
+      - name: Package verified application and demo data
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$POSTGRES_CONTAINER" pg_dump -U sgt --no-owner --no-privileges sgt_test > dist/sgt-demo.sql
+          tar -czf dist/sgt-linux-amd64.tar.gz -C dist api web sgt-demo.sql -C .. db docs README.md
+          (cd dist && sha256sum sgt-linux-amd64.tar.gz > sgt-linux-amd64.tar.gz.sha256)
       - name: Upload test reports and metrics
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         uses: actions/upload-artifact@v7
@@ -90,7 +114,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sgt-build
-          path: dist/sgt-linux-amd64.tar.gz
+          path: |
+            dist/sgt-linux-amd64.tar.gz
+            dist/sgt-linux-amd64.tar.gz.sha256
           retention-days: 1
 
   release:
@@ -108,4 +134,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" sgt-linux-amd64.tar.gz --verify-tag --title "$RELEASE_TAG — учебный срез SGT" --generate-notes --prerelease
+        run: gh release create "$RELEASE_TAG" sgt-linux-amd64.tar.gz sgt-linux-amd64.tar.gz.sha256 --verify-tag --title "$RELEASE_TAG — Справочник городского транспорта" --generate-notes

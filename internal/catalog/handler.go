@@ -17,7 +17,7 @@ type Route struct {
 	End       string `json:"end"`
 }
 
-func NewHandler(db *pgxpool.Pool) http.Handler {
+func NewHandler(db *pgxpool.Pool, admin AdminConfig) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
@@ -31,14 +31,14 @@ func NewHandler(db *pgxpool.Pool) http.Handler {
 	mux.HandleFunc("GET /api/routes", func(w http.ResponseWriter, r *http.Request) {
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		transport := r.URL.Query().Get("transport")
-		if len(query) > 40 || (transport != "" && transport != "bus" && transport != "tram" && transport != "trolleybus") {
+		if len(query) > 40 || (transport != "" && !validTransport(transport)) {
 			http.Error(w, "invalid route filter", http.StatusBadRequest)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 		rows, err := db.Query(ctx, `
-			SELECT id, number, transport, start_stop, end_stop FROM routes
+			SELECT id, number, transport, start_stop, end_stop FROM route_catalog
 			WHERE strpos(lower(number), lower($1)) > 0
 			AND ($2 = '' OR transport = $2)
 			ORDER BY number, transport`, query, transport)
@@ -63,5 +63,9 @@ func NewHandler(db *pgxpool.Pool) http.Handler {
 		sendJSON(w, routes)
 	})
 	addNetwork(mux, db)
-	return mux
+	session := &adminSession{AdminConfig: admin}
+	session.register(mux)
+	addAdmin(mux, db, session)
+	addTimetable(mux, db, session)
+	return http.NewCrossOriginProtection().Handler(mux)
 }
