@@ -84,3 +84,40 @@ li p {
   margin: 4px 0 0;
   overflow-wrap: anywhere;
 }
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #c4d1d6;
+}
+
+a {
+  color: #165f56;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+.ordered {
+  padding-left: 1.5rem;
+}
+
+.ordered li {
+  display: list-item;
+  padding: 12px 0;
+}
+
+.ordered span {
+  color: #475963;
+}
+
+main {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 20px 16px;
+  }
+}

@@ -2,8 +2,6 @@ package catalog
 
 import (
 	"context"
-	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -62,10 +60,8 @@ func NewHandler(db *pgxpool.Pool) http.Handler {
 			http.Error(w, "routes are unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if err := json.NewEncoder(w).Encode(routes); err != nil {
-			log.Print("could not write routes response")
-		}
+		sendJSON(w, routes)
 	})
+	addNetwork(mux, db)
 	return mux
 }
