@@ -26,7 +26,7 @@ export default function App() {
     return () => controller.abort();
   }, []);
 
-  // shortcut: filter the small demo catalog locally; use API filters when pagination is needed.
+  // shortcut: filter the catalog locally; use API filters when pagination is needed.
   const filtered = routes?.filter(
     (route) =>
       route.number.toLowerCase().includes(query.trim().toLowerCase()) &&
@@ -35,9 +35,17 @@ export default function App() {
 
   return (
     <>
-      <h1>Городской транспорт</h1>
-      <p>Найдите маршрут и посмотрите его конечные остановки.</p>
-      <div className="filters">
+      <div className="catalog-banner">
+        <h1>Маршруты</h1>
+        <p>Остановки, направления и расписания городского транспорта.</p>
+        <div className="banner-track" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+      </div>
+      <div className="panel filters search-panel">
         <label>
           Номер маршрута
           <input
@@ -45,6 +53,7 @@ export default function App() {
             onChange={(event) => setQuery(event.target.value)}
             maxLength={40}
             type="search"
+            placeholder="Например, 1"
           />
         </label>
         <label>
@@ -68,24 +77,29 @@ export default function App() {
         <p role="status">Загрузка маршрутов…</p>
       ) : (
         <section aria-label="Результаты поиска" aria-live="polite">
-          <p>Найдено маршрутов: {filtered.length}</p>
+          <p className="result-count">Найдено маршрутов: {filtered.length}</p>
           {filtered.length === 0 ? (
-            <p>Маршруты не найдены.</p>
+            <p className="panel empty-state">Маршруты не найдены.</p>
           ) : (
-            <ul>
+            <ul className="card-grid" role="list">
               {filtered.map((route) => (
                 <li key={route.id}>
-                  <span className="number">{route.number}</span>
-                  <div>
-                    <h2>
-                      <a href={`#/routes/${route.id}`}>
-                        {transportNames[route.transport]} №{route.number}
-                      </a>
-                    </h2>
-                    <p>
-                      {route.start} → {route.end}
-                    </p>
-                  </div>
+                  <a
+                    className="collection-card route-card"
+                    href={`#/routes/${route.id}`}
+                    aria-label={`${transportNames[route.transport]} №${route.number}, ${route.start} → ${route.end}`}
+                  >
+                    <div className="route-card-heading">
+                      <span className={`route-badge ${route.transport}`}>
+                        {route.number}
+                      </span>
+                      <h2>{transportNames[route.transport]}</h2>
+                    </div>
+                    <div className="route-endpoints">
+                      <span>{route.start}</span>
+                      <span>{route.end}</span>
+                    </div>
+                  </a>
                 </li>
               ))}
             </ul>
