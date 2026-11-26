@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { transportNames } from "./App.jsx";
 import { Data, dayNames, directionLabel } from "./Public.jsx";
 
@@ -38,8 +38,11 @@ function useAction() {
   return {
     pending,
     run,
+    clear: () => setFeedback(null),
     notice: feedback && (
-      <p role={feedback.error ? "alert" : "status"}>{feedback.message}</p>
+      <p className="feedback" role={feedback.error ? "alert" : "status"}>
+        {feedback.message}
+      </p>
     ),
   };
 }
@@ -48,6 +51,7 @@ function Login({ onLogin }) {
   const action = useAction();
   return (
     <form
+      className="panel login-form"
       onSubmit={(event) => {
         event.preventDefault();
         const data = Object.fromEntries(new FormData(event.currentTarget));
@@ -79,97 +83,203 @@ function Login({ onLogin }) {
   );
 }
 
-function StopEditor({ stops, onChange, action }) {
-  const [id, setId] = useState("");
-  const stop = stops.find((item) => String(item.id) === id);
+function EditorDialog({ title, action, onClose, children }) {
+  const dialog = useRef(null);
+
+  useEffect(() => {
+    const element = dialog.current;
+    element.showModal();
+    return () => element.close();
+  }, []);
+
   return (
-    <>
-      <label>
-        Остановка для редактирования
-        <select value={id} onChange={(event) => setId(event.target.value)}>
-          <option value="">Новая остановка</option>
-          {stops.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name} — {item.location}
-            </option>
-          ))}
-        </select>
-      </label>
-      <form
-        key={id}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const data = Object.fromEntries(new FormData(event.currentTarget));
-          action.run(async () => {
-            await write(
-              stop ? `/api/admin/stops/${id}` : "/api/admin/stops",
-              stop ? "PUT" : "POST",
-              data,
-            );
-            onChange();
-          }, "Остановка сохранена.");
-        }}
+    <dialog
+      ref={dialog}
+      aria-labelledby="editor-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!action.pending) onClose();
+      }}
+    >
+      <div className="dialog-heading">
+        <h2 id="editor-title">{title}</h2>
+        <button
+          className="secondary"
+          type="button"
+          disabled={action.pending}
+          onClick={onClose}
+        >
+          Закрыть
+        </button>
+      </div>
+      <div className="dialog-body">
+        {children}
+        {action.notice}
+      </div>
+    </dialog>
+  );
+}
+
+function AdminTable({ title, columns, children }) {
+  return (
+    <div className="table-scroll" role="region" aria-label={title} tabIndex={0}>
+      <table aria-label={title}>
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column} scope="col">
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
+function RowActions({ title, pending, onEdit, onDelete }) {
+  return (
+    <div className="row-actions">
+      <button className="secondary" disabled={pending} onClick={onEdit}>
+        Изменить
+      </button>
+      <button
+        className="danger"
+        disabled={pending}
+        aria-label={`Удалить ${title}`}
+        onClick={onDelete}
       >
-        <fieldset disabled={action.pending}>
-          <legend>{stop ? "Изменить остановку" : "Добавить остановку"}</legend>
-          <label>
-            Название
-            <input
-              name="name"
-              required
-              maxLength={100}
-              defaultValue={stop?.name}
-            />
-          </label>
-          <label>
-            Расположение
-            <input
-              name="location"
-              required
-              maxLength={120}
-              defaultValue={stop?.location}
-            />
-          </label>
-          <div className="actions">
-            <button>Сохранить остановку</button>
-            {stop && (
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  if (window.confirm(`Удалить остановку «${stop.name}»?`)) {
-                    action.run(async () => {
-                      await write(`/api/admin/stops/${id}`, "DELETE");
-                      onChange();
-                    }, "Остановка удалена.");
-                  }
-                }}
-              >
-                Удалить остановку
-              </button>
-            )}
-          </div>
-        </fieldset>
-      </form>
-    </>
+        Удалить
+      </button>
+    </div>
+  );
+}
+
+function StopEditor({ stop, onSave, action }) {
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(event.currentTarget));
+        action.run(async () => {
+          await write(
+            stop ? `/api/admin/stops/${stop.id}` : "/api/admin/stops",
+            stop ? "PUT" : "POST",
+            data,
+          );
+          onSave();
+        }, "Остановка сохранена.");
+      }}
+    >
+      <fieldset className="form-fields" disabled={action.pending}>
+        <label>
+          Название
+          <input
+            name="name"
+            required
+            maxLength={100}
+            defaultValue={stop?.name}
+          />
+        </label>
+        <label>
+          Расположение
+          <input
+            name="location"
+            required
+            maxLength={120}
+            defaultValue={stop?.location}
+          />
+        </label>
+        <div className="actions">
+          <button>Сохранить остановку</button>
+        </div>
+      </fieldset>
+    </form>
   );
 }
 
 function StopsAdmin() {
+  const [editor, setEditor] = useState(null);
   const [revision, setRevision] = useState(0);
   const action = useAction();
+
+  function open(stop) {
+    action.clear();
+    setEditor({ stop });
+  }
+
+  function refresh() {
+    setRevision((value) => value + 1);
+  }
+
+  const isOpen = editor !== null;
+
   return (
     <>
-      <Data path={`/api/stops?revision=${revision}`}>
-        {(stops) => (
-          <StopEditor
-            stops={stops}
-            action={action}
-            onChange={() => setRevision(revision + 1)}
-          />
-        )}
+      <div className="table-heading">
+        <h2>Остановки</h2>
+        <button disabled={action.pending} onClick={() => open()}>
+          Добавить остановку
+        </button>
+      </div>
+      {!isOpen && action.notice}
+      <Data path="/api/stops" revision={revision}>
+        {(stops) =>
+          stops.length === 0 ? (
+            <p className="empty-state">В справочнике пока нет остановок.</p>
+          ) : (
+            <AdminTable
+              title="Список остановок"
+              columns={["Название", "Расположение", "Действия"]}
+            >
+              {stops.map((stop) => (
+                <tr key={stop.id}>
+                  <th scope="row">{stop.name}</th>
+                  <td>{stop.location}</td>
+                  <td>
+                    <RowActions
+                      title={`остановку «${stop.name}»`}
+                      pending={action.pending}
+                      onEdit={() => open(stop)}
+                      onDelete={() => {
+                        if (
+                          window.confirm(`Удалить остановку «${stop.name}»?`)
+                        ) {
+                          action.run(async () => {
+                            await write(
+                              `/api/admin/stops/${stop.id}`,
+                              "DELETE",
+                            );
+                            refresh();
+                          }, "Остановка удалена.");
+                        }
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
+          )
+        }
       </Data>
-      {action.notice}
+      {isOpen && (
+        <EditorDialog
+          title={editor.stop ? "Изменить остановку" : "Добавить остановку"}
+          action={action}
+          onClose={() => setEditor(null)}
+        >
+          <StopEditor
+            stop={editor.stop}
+            action={action}
+            onSave={() => {
+              setEditor(null);
+              refresh();
+            }}
+          />
+        </EditorDialog>
+      )}
     </>
   );
 }
@@ -249,144 +359,169 @@ function RouteEditor({ route, stops, action, onChange }) {
         }, "Маршрут сохранён.");
       }}
     >
-      <fieldset disabled={action.pending}>
-        <legend>{route ? "Изменить маршрут" : "Новый маршрут"}</legend>
-        <label>
-          Номер
-          <input
-            name="number"
-            required
-            maxLength={40}
-            defaultValue={route?.number}
-          />
-        </label>
-        <label>
-          Вид транспорта
-          <select name="transport" defaultValue={route?.transport}>
-            {Object.entries(transportNames).map(([value, name]) => (
-              <option key={value} value={value}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {[0, 1].map((direction) => (
-          <StopOrder
-            key={direction}
-            direction={direction}
-            stops={stops}
-            initial={route?.directions
-              .find((item) => item.direction === direction)
-              ?.stops.map((stop) => String(stop.id))}
-          />
-        ))}
+      <fieldset className="form-fields" disabled={action.pending}>
+        <div className="form-columns">
+          <label>
+            Номер
+            <input
+              name="number"
+              required
+              maxLength={40}
+              defaultValue={route?.number}
+            />
+          </label>
+          <label>
+            Вид транспорта
+            <select name="transport" defaultValue={route?.transport}>
+              {Object.entries(transportNames).map(([value, name]) => (
+                <option key={value} value={value}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="form-columns">
+          {[0, 1].map((direction) => (
+            <StopOrder
+              key={direction}
+              direction={direction}
+              stops={stops}
+              initial={route?.directions
+                .find((item) => item.direction === direction)
+                ?.stops.map((stop) => String(stop.id))}
+            />
+          ))}
+        </div>
         <div className="actions">
           <button>Сохранить маршрут</button>
-          {route && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Удалить маршрут №${route.number} и его расписание?`,
-                  )
-                ) {
-                  action.run(async () => {
-                    await write(`/api/admin/routes/${route.id}`, "DELETE");
-                    onChange();
-                  }, "Маршрут удалён вместе с расписанием.");
-                }
-              }}
-            >
-              Удалить маршрут
-            </button>
-          )}
         </div>
       </fieldset>
     </form>
   );
 }
 
-function RouteSelect({ routes, value, onChange, empty }) {
-  return (
-    <label>
-      Выбор маршрута
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">{empty}</option>
-        {routes.map((route) => (
-          <option key={route.id} value={route.id}>
-            {transportNames[route.transport]} №{route.number}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function RoutesAdmin() {
-  const [id, setId] = useState("");
+  const [id, setId] = useState(null);
   const [revision, setRevision] = useState(0);
   const action = useAction();
-  function onChange() {
-    setId("");
-    setRevision(revision + 1);
+
+  function open(routeID) {
+    action.clear();
+    setId(routeID);
   }
+
+  function refresh() {
+    setRevision((value) => value + 1);
+  }
+
+  function editor(stops, route) {
+    return (
+      <RouteEditor
+        route={route}
+        stops={stops}
+        action={action}
+        onChange={() => {
+          setId(null);
+          refresh();
+        }}
+      />
+    );
+  }
+
   return (
     <>
-      <Data path={`/api/routes?revision=${revision}`}>
-        {(routes) => (
-          <RouteSelect
-            routes={routes}
-            value={id}
-            onChange={setId}
-            empty="Новый маршрут"
-          />
-        )}
-      </Data>
-      <Data path="/api/stops">
-        {(stops) =>
-          id ? (
-            <Data path={`/api/routes/${id}`}>
-              {(route) => (
-                <RouteEditor
-                  key={id}
-                  route={route}
-                  stops={stops}
-                  action={action}
-                  onChange={onChange}
-                />
-              )}
-            </Data>
+      <div className="table-heading">
+        <h2>Маршруты</h2>
+        <button disabled={action.pending} onClick={() => open(0)}>
+          Добавить маршрут
+        </button>
+      </div>
+      {id === null && action.notice}
+      <Data path="/api/routes" revision={revision}>
+        {(routes) =>
+          routes.length === 0 ? (
+            <p className="empty-state">В справочнике пока нет маршрутов.</p>
           ) : (
-            <RouteEditor
-              key={revision}
-              stops={stops}
-              action={action}
-              onChange={onChange}
-            />
+            <AdminTable
+              title="Список маршрутов"
+              columns={["Маршрут", "Конечные остановки", "Действия"]}
+            >
+              {routes.map((route) => (
+                <tr key={route.id}>
+                  <th scope="row">
+                    {transportNames[route.transport]} №{route.number}
+                  </th>
+                  <td>
+                    {route.start} → {route.end}
+                  </td>
+                  <td>
+                    <RowActions
+                      title={`маршрут №${route.number}`}
+                      pending={action.pending}
+                      onEdit={() => open(route.id)}
+                      onDelete={() => {
+                        if (
+                          window.confirm(
+                            `Удалить маршрут №${route.number} и его расписание?`,
+                          )
+                        ) {
+                          action.run(async () => {
+                            await write(
+                              `/api/admin/routes/${route.id}`,
+                              "DELETE",
+                            );
+                            refresh();
+                          }, "Маршрут удалён вместе с расписанием.");
+                        }
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
           )
         }
       </Data>
-      {action.notice}
+      {id !== null && (
+        <EditorDialog
+          title={id ? "Изменить маршрут" : "Добавить маршрут"}
+          action={action}
+          onClose={() => setId(null)}
+        >
+          <Data path="/api/stops">
+            {(stops) =>
+              id ? (
+                <Data path={`/api/routes/${id}`}>
+                  {(route) => editor(stops, route)}
+                </Data>
+              ) : (
+                editor(stops)
+              )
+            }
+          </Data>
+        </EditorDialog>
+      )}
     </>
   );
 }
 
-function ScheduleEditor({ route }) {
+function ScheduleEditor({ route, action }) {
   const [direction, setDirection] = useState("0");
   const [day, setDay] = useState("weekday");
   const [revision, setRevision] = useState(0);
-  const action = useAction();
   const suffix = `/routes/${route.id}/schedule?direction=${direction}&day=${day}`;
   return (
     <>
-      <div className="filters">
+      <fieldset className="form-columns form-fields" disabled={action.pending}>
         <label>
           Направление
           <select
             value={direction}
-            onChange={(event) => setDirection(event.target.value)}
+            onChange={(event) => {
+              action.clear();
+              setDirection(event.target.value);
+            }}
           >
             {route.directions.map((item) => (
               <option key={item.direction} value={item.direction}>
@@ -397,7 +532,13 @@ function ScheduleEditor({ route }) {
         </label>
         <label>
           Тип дня
-          <select value={day} onChange={(event) => setDay(event.target.value)}>
+          <select
+            value={day}
+            onChange={(event) => {
+              action.clear();
+              setDay(event.target.value);
+            }}
+          >
             {Object.entries(dayNames).map(([value, title]) => (
               <option key={value} value={value}>
                 {title}
@@ -405,7 +546,7 @@ function ScheduleEditor({ route }) {
             ))}
           </select>
         </label>
-      </div>
+      </fieldset>
       <Data path={`/api${suffix}&revision=${revision}`}>
         {(times) => (
           <form
@@ -425,8 +566,7 @@ function ScheduleEditor({ route }) {
               }, "Расписание сохранено.");
             }}
           >
-            <fieldset disabled={action.pending}>
-              <legend>Плановое время отправления</legend>
+            <fieldset className="form-fields" disabled={action.pending}>
               <label>
                 Время в формате ЧЧ:ММ
                 <textarea
@@ -436,7 +576,7 @@ function ScheduleEditor({ route }) {
                   defaultValue={times.join("\n")}
                 />
               </label>
-              <p>
+              <p className="muted">
                 Разделяйте отправления пробелом или новой строкой. Пустое поле
                 очищает расписание выбранного направления и типа дня.
               </p>
@@ -445,48 +585,108 @@ function ScheduleEditor({ route }) {
           </form>
         )}
       </Data>
-      {action.notice}
     </>
   );
 }
 
 function SchedulesAdmin() {
-  const [id, setId] = useState("");
+  const [selected, setSelected] = useState(null);
+  const action = useAction();
+
   return (
     <>
+      <div className="table-heading">
+        <h2>Расписания</h2>
+      </div>
       <Data path="/api/routes">
-        {(routes) => (
-          <RouteSelect
-            routes={routes}
-            value={id}
-            onChange={setId}
-            empty="Выберите маршрут"
-          />
-        )}
+        {(routes) =>
+          routes.length === 0 ? (
+            <p className="empty-state">
+              Добавьте маршрут, чтобы составить расписание.
+            </p>
+          ) : (
+            <AdminTable
+              title="Расписания маршрутов"
+              columns={["Маршрут", "Конечные остановки", "Действия"]}
+            >
+              {routes.map((route) => (
+                <tr key={route.id}>
+                  <th scope="row">
+                    {transportNames[route.transport]} №{route.number}
+                  </th>
+                  <td>
+                    {route.start} → {route.end}
+                  </td>
+                  <td>
+                    <button
+                      className="secondary"
+                      aria-label="Изменить расписание"
+                      onClick={() => {
+                        action.clear();
+                        setSelected(route);
+                      }}
+                    >
+                      Изменить
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
+          )
+        }
       </Data>
-      {id && (
-        <Data path={`/api/routes/${id}`}>
-          {(route) => <ScheduleEditor key={id} route={route} />}
-        </Data>
+      {selected && (
+        <EditorDialog
+          title={`Расписание · ${transportNames[selected.transport]} №${selected.number}`}
+          action={action}
+          onClose={() => setSelected(null)}
+        >
+          <Data path={`/api/routes/${selected.id}`}>
+            {(route) => <ScheduleEditor route={route} action={action} />}
+          </Data>
+        </EditorDialog>
       )}
     </>
   );
 }
 
+const tabs = [
+  { id: "stops", label: "Остановки", Panel: StopsAdmin },
+  { id: "routes", label: "Маршруты", Panel: RoutesAdmin },
+  { id: "schedules", label: "Расписания", Panel: SchedulesAdmin },
+];
+
 export default function Admin() {
   const [revision, setRevision] = useState(0);
-  const [section, setSection] = useState("stops");
+  const [active, setActive] = useState(0);
   const action = useAction();
+  const { id, Panel } = tabs[active];
+
   function refresh() {
-    setRevision(revision + 1);
+    setRevision((value) => value + 1);
   }
+
+  function moveTab(event, index) {
+    const destinations = {
+      ArrowLeft: (index + tabs.length - 1) % tabs.length,
+      ArrowRight: (index + 1) % tabs.length,
+      Home: 0,
+      End: tabs.length - 1,
+    };
+    if (!Object.hasOwn(destinations, event.key)) return;
+    event.preventDefault();
+    const next = destinations[event.key];
+    setActive(next);
+    document.getElementById(`admin-tab-${tabs[next].id}`).focus();
+  }
+
   return (
-    <>
-      <h1>Администрирование</h1>
-      <Data path={`/api/session?revision=${revision}`}>
-        {({ authenticated }) =>
-          authenticated ? (
-            <>
+    <Data path={`/api/session?revision=${revision}`}>
+      {({ authenticated }) => (
+        <>
+          <div className="admin-heading">
+            <h1>Администрирование</h1>
+            {authenticated && (
               <button
                 className="secondary"
                 disabled={action.pending}
@@ -499,31 +699,46 @@ export default function Admin() {
               >
                 Выйти
               </button>
-              <label className="section">
-                Раздел администрирования
-                <select
-                  value={section}
-                  onChange={(event) => setSection(event.target.value)}
-                >
-                  <option value="stops">Остановки</option>
-                  <option value="routes">Маршруты</option>
-                  <option value="schedules">Расписания</option>
-                </select>
-              </label>
-              {section === "stops" ? (
-                <StopsAdmin />
-              ) : section === "routes" ? (
-                <RoutesAdmin />
-              ) : (
-                <SchedulesAdmin />
-              )}
-            </>
+            )}
+          </div>
+          {authenticated ? (
+            <div className="panel admin-panel">
+              <div
+                className="admin-tabs"
+                role="tablist"
+                aria-label="Управление справочником"
+              >
+                {tabs.map((tab, index) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    id={`admin-tab-${tab.id}`}
+                    aria-selected={active === index}
+                    aria-controls="admin-tab-panel"
+                    tabIndex={active === index ? 0 : -1}
+                    onClick={() => setActive(index)}
+                    onKeyDown={(event) => moveTab(event, index)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <section
+                id="admin-tab-panel"
+                className="admin-tab-panel"
+                role="tabpanel"
+                aria-labelledby={`admin-tab-${id}`}
+              >
+                <Panel />
+              </section>
+            </div>
           ) : (
             <Login onLogin={refresh} />
-          )
-        }
-      </Data>
-      {action.notice}
-    </>
+          )}
+          {action.notice}
+        </>
+      )}
+    </Data>
   );
 }

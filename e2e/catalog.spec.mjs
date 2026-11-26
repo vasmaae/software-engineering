@@ -113,12 +113,27 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
   const session = sessions.find((cookie) => cookie.name === "sgt_session");
   expect(session).toMatchObject({ httpOnly: true, sameSite: "Strict" });
 
-  const setSection = (value) =>
-    page.getByLabel("Раздел администрирования").selectOption(value);
-  const selectRoute = (number) =>
-    page
-      .getByLabel("Выбор маршрута")
-      .selectOption({ label: `Автобус №${number}` });
+  const tab = (name) => page.getByRole("tab", { name });
+  const record = (name) =>
+    page.getByRole("row").filter({
+      has: page.getByRole("rowheader", { name, exact: true }),
+    });
+  const routeRow = (number) => record(`Автобус №${number}`);
+  await tab("Остановки").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(tab("Маршруты")).toBeFocused();
+  await expect(tab("Маршруты")).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Home");
+  await expect(tab("Остановки")).toBeFocused();
+
+  const addStop = page.getByRole("button", { name: "Добавить остановку" });
+  await addStop.click();
+  await expect(
+    page.getByRole("dialog", { name: "Добавить остановку" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await addStop.click();
   const saveStop = () =>
     page.getByRole("button", { name: "Сохранить остановку" }).click();
   await page.getByLabel("Название", { exact: true }).fill(" ");
@@ -130,9 +145,7 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
   await page.getByLabel("Название", { exact: true }).fill(stopName);
   await saveStop();
   await expect(page.getByText("Остановка сохранена.")).toBeVisible();
-  await page
-    .getByLabel("Остановка для редактирования")
-    .selectOption({ label: `${stopName} — Север` });
+  await record(stopName).getByRole("button", { name: "Изменить" }).click();
   await page.getByLabel("Название", { exact: true }).fill(changedStop);
   await saveStop();
   await expect(page.getByText("Остановка сохранена.")).toBeVisible();
@@ -141,7 +154,8 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
   const station = stops.find((stop) => stop.name === "Вокзал");
   expect(created.location).toBe("Север");
 
-  await setSection("routes");
+  await tab("Маршруты").click();
+  await page.getByRole("button", { name: "Добавить маршрут" }).click();
   await page.getByLabel("Номер", { exact: true }).fill(routeNumber);
   const ordered = async (first, second) => {
     await page
@@ -160,7 +174,7 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
   await ordered(created.id, station.id);
   await page.getByRole("button", { name: "Сохранить маршрут" }).click();
   await expect(page.getByText("Маршрут сохранён.")).toBeVisible();
-  await selectRoute(routeNumber);
+  await routeRow(routeNumber).getByRole("button", { name: "Изменить" }).click();
   await expect(page.getByLabel("Прямое направление · остановка 1")).toHaveValue(
     String(created.id),
   );
@@ -174,18 +188,24 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
   expect(route.start).toBe("Вокзал");
   expect(route.end).toBe(changedStop);
 
-  await setSection("stops");
-  await page
-    .getByLabel("Остановка для редактирования")
-    .selectOption({ label: `${changedStop} — Север` });
+  await tab("Остановки").click();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Удалить остановку" }).click();
+  await record(changedStop)
+    .getByRole("button", { name: "Удалить остановку" })
+    .click();
   await expect(page.getByRole("alert")).toContainText(
     "Запись используется в маршруте",
   );
 
-  await setSection("schedules");
-  await selectRoute(updatedNumber);
+  await tab("Расписания").click();
+  expect(
+    await page
+      .getByRole("region", { name: "Расписания маршрутов" })
+      .evaluate((table) => table.scrollWidth <= table.clientWidth),
+  ).toBe(true);
+  await routeRow(updatedNumber)
+    .getByRole("button", { name: "Изменить расписание" })
+    .click();
   await page.getByLabel("Направление").selectOption("1");
   await page.getByLabel("Тип дня").selectOption("weekend");
   const times = page.getByLabel("Время в формате ЧЧ:ММ");
@@ -198,6 +218,11 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
   expect(
     await page.locator("html").evaluate((html) => html.scrollWidth),
   ).toBeLessThanOrEqual(360);
+  expect(
+    await page
+      .getByRole("dialog")
+      .evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth),
+  ).toBe(true);
   await page.goto(`/#/routes/${route.id}?direction=1`);
   await page.getByLabel("Тип дня").selectOption("weekend");
   await expect(page.locator("time")).toHaveText(["09:30", "10:10"]);
@@ -209,13 +234,15 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
   await expect(page.locator("time")).toHaveText(["09:30", "10:10"]);
 
   await page.goto("/#/admin");
-  await setSection("routes");
-  await selectRoute(updatedNumber);
+  await tab("Маршруты").click();
+  const deleteRoute = routeRow(updatedNumber).getByRole("button", {
+    name: "Удалить маршрут",
+  });
   page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "Удалить маршрут" }).click();
+  await deleteRoute.click();
   expect((await request.get(`/api/routes/${route.id}`)).status()).toBe(200);
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Удалить маршрут" }).click();
+  await deleteRoute.click();
   await expect(
     page.getByText("Маршрут удалён вместе с расписанием."),
   ).toBeVisible();
@@ -227,12 +254,11 @@ test("SGT-2/9/10/11/12/13: edits a catalog end to end, protects writes and logs 
     ).status(),
   ).toBe(404);
 
-  await setSection("stops");
-  await page
-    .getByLabel("Остановка для редактирования")
-    .selectOption({ label: `${changedStop} — Север` });
+  await tab("Остановки").click();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Удалить остановку" }).click();
+  await record(changedStop)
+    .getByRole("button", { name: "Удалить остановку" })
+    .click();
   await expect(page.getByText("Остановка удалена.")).toBeVisible();
   await page.getByRole("button", { name: "Выйти" }).click();
   await expect(
